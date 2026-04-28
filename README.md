@@ -17,3 +17,11 @@ A more detailed version that walks through what actually happens in each step �
 ![multi-lora walkthrough](images/multi_lora_walkthrough.png)
 
 **The key intuition**: in the forward pass, `lora_A[b]` is *only* invoked on row 1. PyTorch's autograd records this. When you call `loss.backward()`, the chain rule naturally gives `lora_A[b]` zero gradient from rows 0, 2, 3 — they have no path to those weights. It's not a special routing trick; it's just: the gradient of a weight that didn't influence a loss is zero.
+
+## How LoRA works (the basics)
+
+Before multi-LoRA, here's how single-adapter LoRA works in the first place: freeze the giant pretrained weights, learn a tiny low-rank correction on the side.
+
+![lora explained](images/lora_explained.png)
+
+**Key insight**: when you fine-tune a model, the *update* you'd apply to W has very low intrinsic rank — most of the meaningful change lives in just a few dimensions. So instead of training a full ΔW of size [out × in], train two skinny matrices A [r × in] and B [out × r] whose product B@A has rank ≤ r. With r=16 that's ~125× fewer trainable parameters.
